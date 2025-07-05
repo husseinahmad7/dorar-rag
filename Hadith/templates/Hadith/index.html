@@ -1,0 +1,211 @@
+{% extends 'Hadith/base.html' %}
+
+{% block content %}
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ensure the form can be submitted multiple times
+        const form = document.getElementById('search-form');
+        if (form) {
+            form.addEventListener('htmx:beforeRequest', function(event) {
+                // Enable the form for future submissions
+                event.detail.requestConfig.headers['X-HX-Trigger'] = 'search-form';
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+<!-- Search Box -->
+<div class="mb-8">
+    <div class="relative">
+        <form id="search-form" hx-get="{% url 'hadith:search' %}"
+              hx-trigger="submit"
+              hx-target="#results"
+              hx-indicator="#search-indicator"
+              hx-swap="innerHTML"
+              hx-on::after-request="if(event.detail.successful && event.detail.xhr.status === 200) { document.getElementById('results').scrollIntoView({behavior: 'smooth'}); }"
+              class="bg-white p-6 rounded-lg shadow-md">
+            <div class="relative mb-4">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text"
+                       name="q"
+                       class="w-full p-4 pr-10 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition duration-200 bg-gray-50"
+                       placeholder="اكتب سؤالك أو موضوع البحث هنا..."
+                       autocomplete="off">
+
+            </div>
+
+            <div class="mt-4 mb-3">
+                <h3 class="text-base font-semibold text-gray-800 mb-2">خيارات البحث</h3>
+                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div class="mb-3">
+                        <span class="block text-gray-700 font-medium mb-1">نوع البحث:</span>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                <input type="radio" name="type" value="db" class="form-radio text-blue-500 mr-1" checked id="db-radio">
+                                <span>نصي</span>
+                            </label>
+                            <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                <input type="radio" name="type" value="semantic" class="form-radio text-blue-500 mr-1">
+                                <span>دلالي</span>
+                            </label>
+                            <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                <input type="radio" name="type" value="rag" class="form-radio text-blue-500 mr-1" id="rag-radio">
+                                <span>توليد إجابة</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Semantic search options -->
+                    <div id="semantic-options" style="display: none;" class="mb-3">
+                        <span class="block text-gray-700 font-medium mb-1 text-sm">خيارات البحث الدلالي:</span>
+                        <div class="flex items-center py-1 px-2 bg-white rounded-md border border-gray-200">
+                            <label class="text-sm ml-2">عدد النتائج:</label>
+                            <select name="semantic_results" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="15">15</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Database search options -->
+                    <div id="db-options" style="display: block;">
+                        <!-- Search mode options -->
+                        <div class="mb-3">
+                            <span class="block text-gray-700 font-medium mb-1">طريقة البحث:</span>
+                            <div class="flex flex-wrap gap-2">
+                                <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                    <input type="radio" name="search_mode" value="contains" class="form-radio text-blue-500 mr-1" checked>
+                                    <span>يحتوي على النص</span>
+                                </label>
+                                <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                    <input type="radio" name="search_mode" value="any_word" class="form-radio text-blue-500 mr-1">
+                                    <span>أي كلمة</span>
+                                </label>
+                                <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                    <input type="radio" name="search_mode" value="all_words" class="form-radio text-blue-500 mr-1">
+                                    <span>كل الكلمات</span>
+                                </label>
+                                <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                    <input type="radio" name="search_mode" value="exact" class="form-radio text-blue-500 mr-1">
+                                    <span>النص بالضبط</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Book filter -->
+                        <div class="book-filter-container" style="max-width: 100%;">
+                            <label for="book-filter" class="book-filter-label text-sm font-medium">تصفية حسب الكتاب:</label>
+                            <select id="book-filter" name="book_filter" multiple class="book-filter-select" onchange="updateSelectedBooks()" style="min-height: 80px; max-height: 120px;">
+                                {% for book in book_names %}
+                                    <option value="{{ book }}">{{ book }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="book-filter-help text-xs">يمكنك اختيار أكثر من كتاب (Ctrl+نقر)</div>
+
+                            <!-- Selected books will appear here -->
+                            <div id="selected-books" class="selected-books-container" style="max-height: 80px; overflow-y: auto;"></div>
+                        </div>
+
+                        <script>
+                            function updateSelectedBooks() {
+                                const select = document.getElementById('book-filter');
+                                const selectedBooksContainer = document.getElementById('selected-books');
+                                selectedBooksContainer.innerHTML = '';
+
+                                // Create a tag for each selected book
+                                for (let option of select.selectedOptions) {
+                                    if (option.value) {
+                                        const tag = document.createElement('span');
+                                        tag.className = 'selected-book-tag';
+                                        tag.textContent = option.text;
+                                        selectedBooksContainer.appendChild(tag);
+                                    }
+                                }
+                            }
+
+                            // Initialize on page load
+                            document.addEventListener('DOMContentLoaded', function() {
+                                updateSelectedBooks();
+                            });
+                        </script>
+                    </div>
+
+                    <!-- RAG options -->
+                    <div id="langchain-option" style="display: none;" class="mb-3">
+                        <span class="block text-gray-700 font-medium mb-1 text-sm">خيارات توليد الإجابة:</span>
+                        <div class="flex items-center py-1 px-2 bg-white rounded-md border border-gray-200">
+                            <label class="text-sm ml-2">عدد الأحاديث للسياق:</label>
+                            <select name="rag_results" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                                <option value="3">3</option>
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                        <!-- Add a hidden input to always generate an answer -->
+                        <input type="hidden" name="langchain" value="true">
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition duration-200 font-semibold flex items-center text-sm">
+                        <i class="fas fa-search mr-2"></i>
+                        بحث
+                    </button>
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const ragRadio = document.getElementById('rag-radio');
+                    const dbRadio = document.getElementById('db-radio');
+                    const semanticRadio = document.querySelector('input[name="type"][value="semantic"]');
+
+                    const langchainOption = document.getElementById('langchain-option');
+                    const dbOptions = document.getElementById('db-options');
+                    const semanticOptions = document.getElementById('semantic-options');
+
+                    // Show/hide options based on search type selection
+                    function updateOptionsVisibility() {
+                        // Show/hide LangChain option for RAG search
+                        langchainOption.style.display = ragRadio.checked ? 'block' : 'none';
+
+                        // Show/hide DB search options
+                        dbOptions.style.display = dbRadio.checked ? 'block' : 'none';
+
+                        // Show/hide Semantic search options
+                        semanticOptions.style.display = semanticRadio.checked ? 'block' : 'none';
+                    }
+
+                    // Initial check
+                    updateOptionsVisibility();
+
+                    // Add event listener for radio button changes
+                    document.querySelectorAll('input[name="type"]').forEach(radio => {
+                        radio.addEventListener('change', updateOptionsVisibility);
+                    });
+                });
+            </script>
+        </form>
+
+        <div id="search-indicator" class="htmx-indicator fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-5 rounded-lg shadow-lg flex items-center space-x-4 rtl:space-x-reverse">
+                <i class="fas fa-circle-notch fa-spin text-blue-600 text-2xl"></i>
+                <span class="text-gray-800 font-medium">جاري البحث...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Container -->
+<div id="results" class="space-y-6"></div>
+{% endblock %}

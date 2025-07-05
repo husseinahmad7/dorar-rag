@@ -1,0 +1,250 @@
+{% if page_obj %}
+    <!-- Database search results with pagination -->
+    <div class="mb-6 bg-white p-4 rounded-lg shadow-sm">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold text-gray-800">نتائج البحث</h2>
+            <a href="#" onclick="document.getElementById('search-form').scrollIntoView({behavior: 'smooth'}); return false;" class="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+                <i class="fas fa-arrow-up mr-1"></i>
+                العودة للبحث
+            </a>
+        </div>
+        <div class="text-gray-600 mb-2">
+            تم العثور على <span class="font-semibold text-blue-600">{{ total_results }}</span> نتيجة لـ "<span class="font-semibold">{{ query }}</span>"
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-2">
+            <span class="text-sm font-semibold text-gray-700">طريقة البحث:</span>
+            {% if search_mode == 'contains' %}
+                <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">يحتوي على النص</span>
+            {% elif search_mode == 'any_word' %}
+                <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">أي كلمة</span>
+            {% elif search_mode == 'all_words' %}
+                <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">كل الكلمات</span>
+            {% elif search_mode == 'exact' %}
+                <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">النص بالضبط</span>
+            {% endif %}
+        </div>
+        {% if book_filters %}
+            <div class="flex flex-wrap gap-2 mt-2">
+                <span class="text-sm font-semibold text-gray-700">الكتب المحددة:</span>
+                {% for book in book_filters %}
+                    <span class="selected-book-tag">
+                        {{ book }}
+                    </span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    {% for hadith in page_obj %}
+        <div class="hadith-card bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
+            <div class="mb-4">
+                <p class="text-lg leading-relaxed text-gray-800">{{ hadith.text }}</p>
+            </div>
+            <div class="border-t pt-4">
+                <div class="flex flex-col text-sm text-gray-600">
+                    <div class="flex justify-between items-start">
+                        <p><span class="font-semibold">المصدر:</span> {{ hadith.get_formatted_source }}</p>
+
+                        <a href="{{ hadith.url }}" target="_blank" class="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm">
+                            <i class="fas fa-external-link-alt mr-1"></i>
+                            المصدر الأصلي
+                        </a>
+                    </div>
+
+                    <div class="mt-2">
+                        <div class="narration-chain relative mt-1 text-sm" id="narration-{{ hadith.id }}">
+                            <div class="flex items-center">
+                                <p class="narrator-label">سلسلة الرواة:</p>
+                            </div>
+
+                            {% if hadith.narrators %}
+                                <div class="narrator-summary" title="ضع المؤشر هنا لعرض سلسلة الرواة كاملة">
+                                    {% if hadith.exporter %}
+                                        <span class="text-blue-600 font-semibold">{{ hadith.exporter }}</span>
+                                    {% else %}
+                                        <span class="text-gray-700">{{ hadith.narrators|last }}</span>
+                                    {% endif %}
+                                    <i class="fas fa-info-circle text-gray-400 text-xs ml-1" aria-hidden="true"></i>
+                                </div>
+
+                                <div class="collapsible-narrators">
+                                    <div class="text-xs text-gray-500 mb-1">سلسلة الرواة كاملة:</div>
+                                    {% for narrator in hadith.narrators %}
+                                        {% if not forloop.last %}
+                                            <span class="text-gray-700">{{ narrator }}</span>
+                                            <span class="text-gray-500 mx-1">عن</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if hadith.exporter %}
+                                        <span class="text-blue-600 font-semibold">{{ hadith.exporter }}</span>
+                                    {% else %}
+                                        <span class="text-gray-700">{{ hadith.narrators|last }}</span>
+                                    {% endif %}
+                                </div>
+                            {% elif hadith.exporter %}
+                                <div class="mt-1">
+                                    <span class="text-blue-600 font-semibold">{{ hadith.exporter }}</span>
+                                </div>
+                            {% else %}
+                                <div class="mt-1">
+                                    <span class="text-gray-500">غير متوفر</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <div class="flex justify-center mt-8">
+            <nav class="inline-flex rounded-md shadow">
+                {% if page_obj.has_previous %}
+                    <a hx-get="{% url 'hadith:search' %}?q={{ query }}&type={{ search_type }}&page={{ page_obj.previous_page_number }}{% if search_mode %}&search_mode={{ search_mode }}{% endif %}{% for book in book_filters %}&book_filter={{ book }}{% endfor %}"
+                       hx-target="#results"
+                       hx-swap="innerHTML"
+                       class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50">
+                        السابق
+                    </a>
+                {% else %}
+                    <span class="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-l-md cursor-not-allowed">
+                        السابق
+                    </span>
+                {% endif %}
+
+                {% for i in page_obj.paginator.page_range %}
+                    {% if i == page_obj.number %}
+                        <span class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-gray-300">
+                            {{ i }}
+                        </span>
+                    {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                        <a hx-get="{% url 'hadith:search' %}?q={{ query }}&type={{ search_type }}&page={{ i }}{% if search_mode %}&search_mode={{ search_mode }}{% endif %}{% for book in book_filters %}&book_filter={{ book }}{% endfor %}"
+                           hx-target="#results"
+                           hx-swap="innerHTML"
+                           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50">
+                            {{ i }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <a hx-get="{% url 'hadith:search' %}?q={{ query }}&type={{ search_type }}&page={{ page_obj.next_page_number }}{% if search_mode %}&search_mode={{ search_mode }}{% endif %}{% for book in book_filters %}&book_filter={{ book }}{% endfor %}"
+                       hx-target="#results"
+                       hx-swap="innerHTML"
+                       class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50">
+                        التالي
+                    </a>
+                {% else %}
+                    <span class="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-r-md cursor-not-allowed">
+                        التالي
+                    </span>
+                {% endif %}
+            </nav>
+        </div>
+    {% endif %}
+
+{% elif hadiths %}
+    <!-- Semantic search results -->
+    <div class="mb-6 bg-white p-4 rounded-lg shadow-sm">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold text-gray-800">نتائج البحث الدلالي</h2>
+            <a href="#" onclick="document.getElementById('search-form').scrollIntoView({behavior: 'smooth'}); return false;" class="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+                <i class="fas fa-arrow-up mr-1"></i>
+                العودة للبحث
+            </a>
+        </div>
+        <div class="text-gray-600">
+            تم العثور على <span class="font-semibold text-blue-600">{{ hadiths|length }}</span> نتيجة لـ "<span class="font-semibold">{{ query }}</span>" باستخدام البحث الدلالي
+            {% if semantic_results %}
+                <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">عدد النتائج: {{ semantic_results }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% for hadith in hadiths %}
+        <div class="hadith-card bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
+            <div class="mb-4">
+                <p class="text-lg leading-relaxed text-gray-800">{{ hadith.text }}</p>
+            </div>
+            <div class="border-t pt-4">
+                <div class="flex flex-col text-sm text-gray-600">
+                    <div class="flex justify-between items-start">
+                        <p><span class="font-semibold">المصدر:</span> {{ hadith.get_formatted_source }}</p>
+
+                        <a href="{{ hadith.url }}" target="_blank" class="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm">
+                            <i class="fas fa-external-link-alt mr-1"></i>
+                            المصدر الأصلي
+                        </a>
+                    </div>
+
+                    <div class="mt-2">
+                        <div class="narration-chain relative mt-1 text-sm" id="narration-semantic-{{ hadith.id }}">
+                            <div class="flex items-center">
+                                <p class="narrator-label">سلسلة الرواة:</p>
+                            </div>
+
+                            {% if hadith.narrators %}
+                                <div class="narrator-summary" title="ضع المؤشر هنا لعرض سلسلة الرواة كاملة">
+                                    {% if hadith.exporter %}
+                                        <span class="text-blue-600 font-semibold">{{ hadith.exporter }}</span>
+                                    {% else %}
+                                        <span class="text-gray-700">{{ hadith.narrators|last }}</span>
+                                    {% endif %}
+                                    <i class="fas fa-info-circle text-gray-400 text-xs ml-1" aria-hidden="true"></i>
+                                </div>
+
+                                <div class="collapsible-narrators">
+                                    <div class="text-xs text-gray-500 mb-1">سلسلة الرواة كاملة:</div>
+                                    {% for narrator in hadith.narrators %}
+                                        {% if not forloop.last %}
+                                            <span class="text-gray-700">{{ narrator }}</span>
+                                            <span class="text-gray-500 mx-1">عن</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if hadith.exporter %}
+                                        <span class="text-blue-600 font-semibold">{{ hadith.exporter }}</span>
+                                    {% else %}
+                                        <span class="text-gray-700">{{ hadith.narrators|last }}</span>
+                                    {% endif %}
+                                </div>
+                            {% elif hadith.exporter %}
+                                <div class="mt-1">
+                                    <span class="text-blue-600 font-semibold">{{ hadith.exporter }}</span>
+                                </div>
+                            {% else %}
+                                <div class="mt-1">
+                                    <span class="text-gray-500">غير متوفر</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        <span class="font-semibold">درجة التطابق:</span>
+                        {{ hadith.similarity_score|floatformat:1 }}%
+                    </div>
+                    <a href="{{ hadith.url }}"
+                       target="_blank"
+                       class="text-blue-500 hover:text-blue-600 transition-colors duration-200">
+                        <i class="fas fa-external-link-alt mr-1"></i>
+                        المصدر الأصلي
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="text-center bg-white p-8 rounded-lg shadow-sm">
+        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+        <p class="text-gray-600 mb-4">لم يتم العثور على نتائج لـ "<span class="font-semibold">{{ query }}</span>"</p>
+        <a href="#" onclick="document.getElementById('search-form').scrollIntoView({behavior: 'smooth'}); return false;" class="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm">
+            <i class="fas fa-arrow-up mr-1"></i>
+            العودة للبحث وتغيير معايير البحث
+        </a>
+    </div>
+{% endif %}

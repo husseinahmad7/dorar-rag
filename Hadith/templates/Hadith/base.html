@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}بحث في الأحاديث{% endblock %}</title>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+        body {
+            font-family: 'Amiri', serif;
+        }
+        .hadith-card {
+            transition: transform 0.2s;
+        }
+        .hadith-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Multi-select styling */
+        .book-filter-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 8px;
+        }
+
+        .book-filter-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #4b5563;
+        }
+
+        .book-filter-select {
+            width: 100%;
+            height: auto;
+            min-height: 80px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 6px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background-color: #f9fafb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .book-filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .book-filter-select option {
+            padding: 4px 6px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .book-filter-select option:hover {
+            background-color: #e5e7eb;
+        }
+
+        .book-filter-select option:checked {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+        }
+
+        .book-filter-help {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: right;
+        }
+
+        .selected-books-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .selected-book-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #e0f2fe;
+            color: #0369a1;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin: 2px;
+        }
+        /* Narrators hover styling */
+        .narration-chain {
+            position: relative;
+            overflow: visible;
+        }
+
+        .collapsible-narrators {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            left: 0;
+            background-color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 10;
+            margin-top: 4px;
+            border: 1px solid #e5e7eb;
+            line-height: 1.5;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .narration-chain:hover .collapsible-narrators {
+            max-height: 500px; /* Large enough to show all content */
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .narrator-label {
+            color: #4b5563;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .narrator-summary {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 4px;
+            cursor: help;
+            position: relative;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .narrator-summary:hover {
+            color: #3b82f6;
+            background-color: #f3f4f6;
+        }
+
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-request.htmx-indicator {
+            display: inline-block;
+        }
+
+        /* Narrators chain styling */
+        .narration-chain {
+            position: relative;
+        }
+        .collapsible-narrators {
+            display: inline;
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.3s ease;
+        }
+        .collapsible-narrators:hover {
+            max-width: 100%;
+            overflow: visible;
+            background-color: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                    <a href="{% url 'hadith:index' %}">بحث في الأحاديث</a>
+                </h1>
+                <p class="text-gray-600">ابحث في مجموعة من الأحاديث باستخدام الذكاء الاصطناعي</p>
+            </div>
+
+            <!-- Main Content -->
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script>
+        // Ensure HTMX properly reinitializes after content is loaded
+        document.addEventListener('htmx:afterSwap', function(event) {
+            // Reinitialize any components that need it after content swap
+            if (event.detail.target.id === 'results') {
+                // Scroll to results if they exist and are not empty
+                if (event.detail.target.innerHTML.trim() !== '') {
+                    event.detail.target.scrollIntoView({behavior: 'smooth'});
+
+                    // Initialize narrators after content swap
+                    setTimeout(function() {
+                        initializeNarrators();
+                    }, 100);
+                }
+            }
+        });
+
+        // Add a small delay to the hover effect to make it more intentional
+        document.addEventListener('DOMContentLoaded', function() {
+            setupNarratorHovers();
+        });
+
+        // Setup hover effects after HTMX content swap
+        document.addEventListener('htmx:afterSwap', function(event) {
+            setupNarratorHovers();
+        });
+
+        function setupNarratorHovers() {
+            // Add a small tooltip indicator to narrator summaries
+            document.querySelectorAll('.narrator-summary').forEach(function(summary) {
+                summary.setAttribute('title', 'ضع المؤشر هنا لعرض سلسلة الرواة كاملة');
+            });
+        }
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

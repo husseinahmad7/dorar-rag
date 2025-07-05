@@ -1,0 +1,16 @@
+{% extends 'Hadith/base.html' %}
+
+{% block title %}خطأ - {{ error }}{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-md">
+    <div class="text-center">
+        <i class="fas fa-exclamation-circle text-red-500 text-5xl mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">حدث خطأ</h2>
+        <p class="text-gray-600 mb-6">{{ error }}</p>
+        <a href="{% url 'hadith:index' %}" class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition duration-200">
+            العودة إلى الصفحة الرئيسية
+        </a>
+    </div>
+</div>
+{% endblock %}
