@@ -248,6 +248,21 @@
                 summary.setAttribute('title', 'ضع المؤشر هنا لعرض سلسلة الرواة كاملة');
             });
         }
+
+        function initializeNarrators() {
+            // Initialize narrator hover functionality for dynamically loaded content
+            setupNarratorHovers();
+
+            // Add click handlers for narrator expansion if needed
+            document.querySelectorAll('.narrator-summary').forEach(function(summary) {
+                summary.addEventListener('click', function() {
+                    const narratorsDiv = this.parentElement.querySelector('.collapsible-narrators');
+                    if (narratorsDiv) {
+                        narratorsDiv.style.display = narratorsDiv.style.display === 'none' ? 'block' : 'none';
+                    }
+                });
+            });
+        }
     </script>
     {% block extra_scripts %}{% endblock %}
 </body>

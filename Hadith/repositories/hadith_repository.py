@@ -69,7 +69,7 @@ class HadithRepository:
             elif filters.get('books'):
                 book_filter = Q()
                 for book in filters['books']:
-                    book_filter |= Q(book_name=book)
+                    book_filter |= Q(book_name__icontains=book)
                 if book_filter:
                     filter_query &= book_filter
 

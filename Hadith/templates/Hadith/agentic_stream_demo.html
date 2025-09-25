@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>البحث الذكي المتدفق في المصادر الشيعية</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .search-form {
+            margin-bottom: 30px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .search-button {
+            background: #007bff;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .search-button:hover {
+            background: #0056b3;
+        }
+        .search-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+        }
+        .progress-item.status {
+            border-left-color: #28a745;
+        }
+        .progress-item.tools {
+            border-left-color: #ffc107;
+        }
+        .progress-item.agent_start {
+            border-left-color: #17a2b8;
+        }
+        .progress-item.agent_complete {
+            border-left-color: #28a745;
+        }
+        .progress-item.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .result-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .answer {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-right: 4px solid #007bff;
+        }
+        .sources {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+            float: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>البحث الذكي المتدفق في المصادر الشيعية</h1>
+        <p>اختبار البحث الذكي مع عرض التقدم في الوقت الفعلي</p>
+        
+        <div class="search-form">
+            <input type="text" id="searchQuery" class="search-input" 
+                   placeholder="أدخل سؤالك هنا..." 
+                   value="ما هو حكم الصلاة في الإسلام؟">
+            <br>
+            <button id="searchButton" class="search-button">بدء البحث الذكي</button>
+        </div>
+        
+        <div id="progressContainer" class="progress-container">
+            <h3>تقدم البحث:</h3>
+            <div id="progressItems"></div>
+        </div>
+        
+        <div id="resultContainer" class="result-container">
+            <h3>النتيجة النهائية:</h3>
+            <div id="finalResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const searchButton = document.getElementById('searchButton');
+        const searchQuery = document.getElementById('searchQuery');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressItems = document.getElementById('progressItems');
+        const resultContainer = document.getElementById('resultContainer');
+        const finalResult = document.getElementById('finalResult');
+
+        searchButton.addEventListener('click', startSearch);
+        searchQuery.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                startSearch();
+            }
+        });
+
+        function startSearch() {
+            const query = searchQuery.value.trim();
+            if (!query) {
+                alert('يرجى إدخال سؤال للبحث');
+                return;
+            }
+
+            // Reset UI
+            searchButton.disabled = true;
+            searchButton.textContent = 'جاري البحث...';
+            progressContainer.style.display = 'block';
+            resultContainer.style.display = 'none';
+            progressItems.innerHTML = '';
+            finalResult.innerHTML = '';
+
+            // Start streaming search
+            const eventSource = new EventSource(`/hadith/api/agentic-search-stream/?q=${encodeURIComponent(query)}&use_internet=true&memory_enabled=true`);
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleStreamUpdate(data);
+                } catch (e) {
+                    console.error('Error parsing stream data:', e);
+                }
+            };
+
+            eventSource.onerror = function(event) {
+                console.error('Stream error:', event);
+                addProgressItem('error', 'حدث خطأ في الاتصال', new Date().toISOString());
+                resetSearch();
+            };
+        }
+
+        function handleStreamUpdate(data) {
+            switch (data.type) {
+                case 'status':
+                case 'tools':
+                case 'agent_start':
+                case 'agent_complete':
+                    addProgressItem(data.type, data.message, data.timestamp);
+                    break;
+                case 'result':
+                    showFinalResult(data.data);
+                    resetSearch();
+                    break;
+                case 'error':
+                    addProgressItem('error', data.message, data.timestamp);
+                    resetSearch();
+                    break;
+                case 'complete':
+                    resetSearch();
+                    break;
+            }
+        }
+
+        function addProgressItem(type, message, timestamp) {
+            const item = document.createElement('div');
+            item.className = `progress-item ${type}`;
+            item.innerHTML = `
+                <div>${message}</div>
+                <div class="timestamp">${new Date(timestamp).toLocaleTimeString('ar-SA')}</div>
+            `;
+            progressItems.appendChild(item);
+            progressItems.scrollTop = progressItems.scrollHeight;
+        }
+
+        function showFinalResult(result) {
+            resultContainer.style.display = 'block';
+            finalResult.innerHTML = `
+                <div class="answer">
+                    <h4>الإجابة:</h4>
+                    <p>${result.answer}</p>
+                </div>
+                <div class="sources">
+                    <h4>المصادر:</h4>
+                    <p>مصادر الأحاديث: ${result.sources.hadith_sources?.length || 0}</p>
+                    <p>مصادر الإنترنت: ${result.sources.web_sources?.length || 0}</p>
+                </div>
+            `;
+        }
+
+        function resetSearch() {
+            searchButton.disabled = false;
+            searchButton.textContent = 'بدء البحث الذكي';
+        }
+    </script>
+</body>
+</html>

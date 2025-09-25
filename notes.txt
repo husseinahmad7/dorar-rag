@@ -1,1 +1,2 @@
-- im using chromadb from github because im using jinaembedding function wuith task_type which must be in 1.0.5 version.
+- must implement deepagents in agentic_search
+- the local embeddinggemma is poor, disable semantic search for now

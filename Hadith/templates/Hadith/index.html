@@ -56,6 +56,10 @@
                                 <input type="radio" name="type" value="rag" class="form-radio text-blue-500 mr-1" id="rag-radio">
                                 <span>توليد إجابة</span>
                             </label>
+                            <label class="inline-flex items-center py-1 px-2 bg-white rounded-md border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm">
+                                <input type="radio" name="type" value="agentic" class="form-radio text-blue-500 mr-1" id="agentic-radio">
+                                <span>بحث ذكي متقدم</span>
+                            </label>
                         </div>
                     </div>
 
@@ -153,6 +157,25 @@
                         <!-- Add a hidden input to always generate an answer -->
                         <input type="hidden" name="langchain" value="true">
                     </div>
+
+                    <!-- Agentic search options -->
+                    <div id="agentic-options" style="display: none;" class="mb-3">
+                        <span class="block text-gray-700 font-medium mb-1 text-sm">خيارات البحث الذكي المتقدم:</span>
+                        <div class="space-y-2">
+                            <div class="flex items-center py-1 px-2 bg-white rounded-md border border-gray-200">
+                                <label class="inline-flex items-center text-sm">
+                                    <input type="checkbox" name="use_internet" value="true" class="form-checkbox text-blue-500 mr-1" checked>
+                                    <span>استخدام البحث في الإنترنت</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center py-1 px-2 bg-white rounded-md border border-gray-200">
+                                <label class="inline-flex items-center text-sm">
+                                    <input type="checkbox" name="memory_enabled" value="true" class="form-checkbox text-blue-500 mr-1" checked>
+                                    <span>تفعيل الذاكرة التفاعلية</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mt-4 flex justify-end">
@@ -169,10 +192,12 @@
                     const ragRadio = document.getElementById('rag-radio');
                     const dbRadio = document.getElementById('db-radio');
                     const semanticRadio = document.querySelector('input[name="type"][value="semantic"]');
+                    const agenticRadio = document.getElementById('agentic-radio');
 
                     const langchainOption = document.getElementById('langchain-option');
                     const dbOptions = document.getElementById('db-options');
                     const semanticOptions = document.getElementById('semantic-options');
+                    const agenticOptions = document.getElementById('agentic-options');
 
                     // Show/hide options based on search type selection
                     function updateOptionsVisibility() {
@@ -184,6 +209,9 @@
 
                         // Show/hide Semantic search options
                         semanticOptions.style.display = semanticRadio.checked ? 'block' : 'none';
+
+                        // Show/hide Agentic search options
+                        agenticOptions.style.display = agenticRadio.checked ? 'block' : 'none';
                     }
 
                     // Initial check

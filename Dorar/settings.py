@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -129,4 +130,129 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
     }
+}
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        }
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        }
+    },
+}
+# ------------------------------------------------------------------------------
+# Additional project configuration (embeddings, agentic RAG, external services)
+# ------------------------------------------------------------------------------
+
+# Optionally load environment from a .env file in BASE_DIR if python-dotenv is installed.
+# This allows developers to store sensitive keys locally without committing them.
+try:
+    # Delay import to avoid hard dependency if python-dotenv is not installed.
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv(dotenv_path=BASE_DIR / '.env',override=True)
+except Exception:
+    # If dotenv isn't available or .env is missing, continue using environment variables.
+    pass
+
+# External API keys and endpoints
+# Use environment variables in production. Defaults are safe fallbacks for development only.
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+TAVILY_API_KEY = os.getenv('TAVILY_API_KEY', '')
+# Tavily public search endpoint (adjustable via env)
+TAVILY_API_URL = os.getenv('TAVILY_API_URL', 'https://api.tavily.ai/v1/search')
+
+# Embedding and LLM model defaults
+# DEFAULT_EMBEDDING_MODEL: primary embedding model used across the project.
+DEFAULT_EMBEDDING_MODEL = os.getenv('DEFAULT_EMBEDDING_MODEL', 'gemini-embedding-001')
+
+# Embedding output dimensionality: keep consistent with model capability (gemini-embedding-001 -> 3072).
+# Stored as int to avoid repeated casting elsewhere.
+EMBEDDING_OUTPUT_DIMENSIONALITY = int(os.getenv('EMBEDDING_OUTPUT_DIMENSIONALITY', '3072'))
+
+# DEFAULT_LLM_MODEL: primary LLM model used for generation/synthesis by agentic RAG and services.
+DEFAULT_LLM_MODEL = os.getenv('DEFAULT_LLM_MODEL', 'gemini-2.5-flash-lite')
+
+# Chroma DB configuration
+# Path where ChromaDB local persistence will store vector collections.
+CHROMA_DB_PATH = os.getenv('CHROMA_DB_PATH', str(BASE_DIR / 'chroma_db'))
+
+# Agentic RAG configuration
+# Controls the agent orchestration behavior and memory sizing.
+MAX_SUBAGENTS = int(os.getenv('MAX_SUBAGENTS', '3'))
+MEMORY_BUFFER_SIZE = int(os.getenv('MEMORY_BUFFER_SIZE', '10'))
+# Whether to enable the agentic RAG system by default.
+AGENTIC_RAG_ENABLED = os.getenv('AGENTIC_RAG_ENABLED', 'True').lower() in ('1', 'true', 'yes')
+# Default behavior for agents to use internet search tools when available.
+DEFAULT_USE_INTERNET_FOR_AGENT = os.getenv('DEFAULT_USE_INTERNET_FOR_AGENT', 'True').lower() in ('1', 'true', 'yes')
+# Maximum allowed runtime in seconds for a single agent orchestration loop (safety limit).
+AGENT_MAX_RUNTIME_SECONDS = int(os.getenv('AGENT_MAX_RUNTIME_SECONDS', '60'))
+
+# Deepagents / agent framework specific settings grouped for convenience.
+DEEPAGENTS_SETTINGS = {
+    'ENABLED': AGENTIC_RAG_ENABLED,
+    'MAX_SUBAGENTS': MAX_SUBAGENTS,
+    'MEMORY_BUFFER_SIZE': MEMORY_BUFFER_SIZE,
+    'DEFAULT_USE_INTERNET': DEFAULT_USE_INTERNET_FOR_AGENT,
+    'MAX_RUNTIME_SECONDS': AGENT_MAX_RUNTIME_SECONDS,
+}
+
+# Logging settings for agentic components (these values can be overridden by Django LOGGING).
+AGENTIC_LOG_LEVEL = os.getenv('AGENTIC_LOG_LEVEL', 'INFO')
+
+# Timeouts and retry policy for external API calls (can be tuned via env vars).
+EXTERNAL_API_TIMEOUT_SECONDS = int(os.getenv('EXTERNAL_API_TIMEOUT_SECONDS', '30'))
+EXTERNAL_API_RETRY_COUNT = int(os.getenv('EXTERNAL_API_RETRY_COUNT', '2'))
+
+# Feature flags - useful to toggle new behavior during rollout.
+# When True, code paths that use gemini-embedding-001 are preferred; otherwise legacy paths may be used.
+PREFER_GEMINI_EMBEDDINGS = os.getenv('PREFER_GEMINI_EMBEDDINGS', 'True').lower() in ('1', 'true', 'yes')
+
+# Vector database control - allows globally disabling vector database functionality
+VECTOR_DB_ENABLED = os.getenv('VECTOR_DB_ENABLED', 'True').lower() in ('1', 'true', 'yes')
+
+# Local embedding model configuration
+# When True, uses local Gemma embedding model instead of Google's API
+USE_LOCAL_EMBEDDINGS = os.getenv('USE_LOCAL_EMBEDDINGS', 'False').lower() in ('1', 'true', 'yes')
+
+# Local embedding server configuration
+LOCAL_EMBEDDING_URL = os.getenv('LOCAL_EMBEDDING_URL', 'http://localhost:12434/engines/llama.cpp/v1/embeddings')
+LOCAL_EMBEDDING_MODEL = os.getenv('LOCAL_EMBEDDING_MODEL', 'ai/embeddinggemma')
+LOCAL_EMBEDDING_DIMENSIONALITY = int(os.getenv('LOCAL_EMBEDDING_DIMENSIONALITY', '768'))
+
+# Provide a small docstring-like mapping for discoverability in runtime introspection.
+PROJECT_SERVICE_SETTINGS = {
+    'DEFAULT_EMBEDDING_MODEL': DEFAULT_EMBEDDING_MODEL,
+    'EMBEDDING_OUTPUT_DIMENSIONALITY': EMBEDDING_OUTPUT_DIMENSIONALITY,
+    'DEFAULT_LLM_MODEL': DEFAULT_LLM_MODEL,
+    'CHROMA_DB_PATH': CHROMA_DB_PATH,
+    'DEEPAGENTS_SETTINGS': DEEPAGENTS_SETTINGS,
+    'GEMINI_API_KEY_SET': bool(GEMINI_API_KEY),
+    'TAVILY_API_KEY_SET': bool(TAVILY_API_KEY),
+    'VECTOR_DB_ENABLED': VECTOR_DB_ENABLED,
+    'USE_LOCAL_EMBEDDINGS': USE_LOCAL_EMBEDDINGS,
+    'LOCAL_EMBEDDING_URL': LOCAL_EMBEDDING_URL,
+    'LOCAL_EMBEDDING_MODEL': LOCAL_EMBEDDING_MODEL,
 }
