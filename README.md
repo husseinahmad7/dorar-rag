@@ -28,6 +28,7 @@ A comprehensive Islamic Hadith search and retrieval system built with Django, fe
 - **Search History**: Track and revisit previous searches
 - **Source Citations**: Detailed hadith references and narration chains
 
+![Agentic Search GUI](./Agent-Screenshot.png)
 ## 🚀 Quick Start
 
 ### Prerequisites
